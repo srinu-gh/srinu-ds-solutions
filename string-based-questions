@@ -36,7 +36,6 @@ public class FindMinMax {
 //		System.out.print("removeDuplicateChars === " + removeDuplicateChars());
 //		System.out.print("removeCharsFrom2ndString === " + removeCharsFrom2ndString());
 //		permutation("","abc");
-		System.out.print("factorial === " + factorial(6));
 	}
 
 	static int findMinMax(int[] arr, int n) {
