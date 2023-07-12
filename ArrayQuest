@@ -1,0 +1,209 @@
+package com.practice
+
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class ArrayBasedSol {
+	public static void main(String[] args) {
+//		System.out.println(Arrays.toString(deleteElementFromArray()));
+//		System.out.println(Arrays.toString(addElementFromArray()));
+//		System.out.println(findMissingNumber());
+//		System.out.println(Arrays.toString(moveNegativeElementsToFront()));
+//		System.out.println(findMinDiff());
+//		System.out.println(findMaxDiff());
+//		System.out.println(binarySearch());
+//		findDulicateElements();
+//		findPairSum();
+//		arraySort();
+//		commonElementsinArray();
+//		reverseArray();
+//		reverseArrayUsingStack();
+//		nextGraterelement();
+//		sorteNames();
+//		reverseWords();
+//		maxOfEachRow();
+//		maxMinMatrix();
+		secondLargest();
+	}
+	static int[] deleteElementFromArray() {
+		int[] numbers= {10,11,24,53,22};
+		int deleteNum=53;
+		return Arrays.stream(numbers).filter(num->num!=deleteNum).toArray();
+	}
+	static int[] addElementFromArray() {
+		int[] numbers= {10,11,24,53,22};
+		int addNum=88;
+		int[] updatedArray=Arrays.copyOf(numbers, numbers.length+1);
+		updatedArray[numbers.length]=addNum;
+		return updatedArray;
+	}
+	static int findMissingNumber() {
+		int[] numbers= {1,2,3,4,5,7};
+		int expectedSum=(numbers.length+1)*(numbers.length+2)/2;
+		int actualSum=Arrays.stream(numbers).sum();
+		return expectedSum-actualSum;
+	}
+	static int[] moveNegativeElementsToFront() {
+		int[] numbers= {10,40,-2,-4,75,-6};
+		int[] rearrangedArr=new int[numbers.length];
+		int index=0;
+		for(int number:numbers) {
+			if(number<0) {
+				rearrangedArr[index++]=number;
+			}
+		}
+		for(int number:numbers) {
+			if(number>=0) {
+				rearrangedArr[index++]=number;
+			}
+		}
+		
+		return rearrangedArr;
+	}
+	static int findMinDiff() {
+		int[] numbers= {1,2,4,84,34,56};
+		int min=Arrays.stream(numbers).min().getAsInt();
+		int secondSmallestNumber = Arrays.stream(numbers).boxed().sorted().skip(1).findFirst().get();
+		return secondSmallestNumber-min;
+	}
+	static int findMaxDiff() {
+		int[] numbers= {1,2,4,84,34,56};
+		return Arrays.stream(numbers).max().getAsInt()-Arrays.stream(numbers).min().getAsInt();
+	}
+	
+	static int binarySearch() {
+		int[] numbers= {1,2,4,34,54,87};
+		int target=4;
+		int left=0;
+		int right=numbers.length-1;
+		while(left<=right) {
+			int mid=left+(right-left)/2;
+			if(numbers[mid]==target)
+				return mid;
+			else if(numbers[mid]<target)
+				left=mid+1;
+			else
+				right=mid-1;
+		}
+		return -1;
+		//  or
+//		return Arrays.binarySearch(numbers,87);
+	}
+	static void findDulicateElements() {
+		int[] numbers= {1,3,4,4,3,3,6};
+		Set<Integer> set=new HashSet<Integer>();
+		Set<Integer> duplicateEle=new HashSet<Integer>();
+		for(int number:numbers) {
+			if(!set.add(number)) {
+				duplicateEle.add(number);
+			}
+		}
+		System.out.println(duplicateEle.toString());
+	}
+	static void findPairSum() {
+		int[] numbers= {1,2,3,5,7,4};
+		int target=10;
+		Set<Integer> set=new HashSet<Integer>();
+		for (int number:numbers) {
+			int compliment=target-number;
+			if(set.contains(compliment)) {
+				System.out.println("the pair of numbers are: "+number+","+compliment);
+				break;
+			}
+			set.add(number);
+		}
+	}
+	
+	static void arraySort() {
+		int[] numbers= {1,2,3,5,7,4};
+		System.out.println("acending: "+Arrays.toString(Arrays.stream(numbers).sorted().toArray()));
+		System.out.println("desc: "+Arrays.toString(Arrays.stream(numbers).boxed().sorted(Comparator.reverseOrder())
+				.mapToInt(Integer::intValue).toArray()));
+	}
+	
+	static void commonElementsinArray() {
+		int[] arr1= {1,2,3,5,7,4};
+		int[] arr2= {1,2,3,77,987,34};
+		int[] commonEle=Arrays.stream(arr1).distinct()
+				.filter(num->Arrays.stream(arr2).anyMatch(arr2Num->arr2Num==num)).toArray();
+		System.out.println("common elements: "+Arrays.toString(commonEle));
+		
+	}
+	
+	static void reverseArray() {
+		int[] arr1= {1,2,3,5,7,4};
+		int[] reversearr=IntStream.range(0, arr1.length).map(i->arr1[arr1.length-1-i]).toArray();
+		System.out.println("reversed arr : "+Arrays.toString(reversearr));
+	}
+	
+	static void reverseArrayUsingStack() {
+		int[] arr1= {1,2,3,5,7,4};
+		Stack<Integer> stack=new Stack<Integer>();
+		Arrays.stream(arr1).forEach(stack::push);
+		int[] reverseArr=new int[arr1.length];
+		for (int i=0;i<arr1.length;i++) {
+			reverseArr[i]=stack.pop();
+		}
+		System.out.println("reversed array=="+Arrays.toString(reverseArr));
+	}
+	
+	static void nextGraterelement() {
+		int[] arr= {1,2,3,5,7,4};
+		Stack<Integer> stack=new Stack<Integer>();
+		for (int i=0;i<arr.length;i++) {
+			if(!stack.isEmpty() && arr[i]>arr[stack.peek()]) {
+				int index=stack.pop();
+				System.out.println(arr[index]+"->"+arr[i]);
+			}
+			stack.push(i);
+		}
+		while(!stack.isEmpty()) {
+			int index=stack.pop();
+			System.out.println(arr[index]+"->"+"N/A");
+		}
+	}
+	static void sorteNames() {
+		String[] names= {"srinu","pilla","sti","india"};
+		System.out.println("sorted array: "+Arrays.toString(Arrays.stream(names).sorted().toArray(String[]::new)));
+	}
+	static void reverseWords() {
+		String sentence="state bank of inda associate banks";
+		System.out.println(Arrays.stream(sentence.split("//s+")).map(word->new StringBuffer(word).reverse()).collect(Collectors.joining("::")));
+	}
+	
+	static void maxOfEachRow() {
+		int[][] matrix= {
+				{1,2,3},
+				{4,5,6},
+				{8,23,8}
+		};
+		int[] maxValues=new int[matrix.length];
+		for(int i=0;i<matrix.length;i++) {
+			maxValues[i]=Arrays.stream(matrix[i]).max().getAsInt();
+		}
+		System.out.println(" maxValues "+Arrays.toString(maxValues));
+	}
+	
+	static void maxMinMatrix() {
+		int[][] matrix= {
+				{1,2,3},
+				{4,5,6},
+				{8,23,8}
+		};
+		
+		System.out.println("max val="+Arrays.stream(matrix).flatMapToInt(Arrays::stream).max().getAsInt());
+		System.out.println("min val="+Arrays.stream(matrix).flatMapToInt(Arrays::stream).min().getAsInt());
+	}
+	
+	static void secondLargest() {
+		int[] arr= {1,2,3,5,7,4};
+		System.out.println("second largest="+Arrays.stream(arr).boxed().sorted(Comparator.reverseOrder()).skip(1).findFirst().orElse(0));
+	}
+	
+	
+}
