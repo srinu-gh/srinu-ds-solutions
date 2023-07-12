@@ -1,0 +1,253 @@
+package com.sbi;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class FindMinMax {
+
+	public static void main(String[] args) {
+		int arr[] = { 1, 3, 20, 4, 45, 30 };
+		String arrString[] = { "srinupp", "sbi", "bank", "indian" };
+		int n = arr.length;
+//		System.out.print("findMinMax " + findMinMax(arr, n));
+//		System.out.print("findMinMax " + findMin(arr, n));
+//		System.out.print("reverseArray " + Arrays.toString(reverseArray(arr, n)));
+//		System.out.print("reverseArrayString " + Arrays.toString(reverseArrayString(arrString, arrString.length)));
+//		System.out.print("reverseArrayStringMax " + reverseArrayStringMax(arrString, arrString.length));
+//		System.out.print("anaragamcheck " + anaragamcheck());
+//		System.out.print("balancedStringcheck === " + balancedStringcheck());
+//		System.out.print("printEvenwords === " + Arrays.toString(printEvenwords()));
+//		System.out.print("sumOfTwoStrings === " + sumOfTwoStrings());
+//		System.out.print("reverseWords === " + reverseWords());
+//		System.out.print("equalcheck === " + equalcheck());
+//		System.out.print("firstNonRepeatingChar === " + firstNonRepeatingChar());
+//		characterCountInEachWord();
+//		System.out.print("panagramCheck === " + panagramCheck());
+//		System.out.print("palendromecheck === " + palendromecheck());
+//		System.out.print("numberPalendromecheck === " + numberPalendromecheck());
+//		printAllSubstrings();
+//		System.out.print("roationCheck === " + roationCheck());
+//		System.out.print("lengthOfLongestSubstring === " + lengthOfLongestSubstring());
+//		System.out.print("removeDuplicateChars === " + removeDuplicateChars());
+//		System.out.print("removeCharsFrom2ndString === " + removeCharsFrom2ndString());
+//		permutation("","abc");
+		System.out.print("factorial === " + factorial(6));
+	}
+
+	static int findMinMax(int[] arr, int n) {
+		return Arrays.stream(arr).max().getAsInt();
+	}
+
+	static int findMin(int[] arr, int n) {
+		return Arrays.stream(arr).min().getAsInt();
+	}
+
+	static int[] reverseArray(int[] arr, int n) {
+		return IntStream.range(0, n).map(i -> arr[n - 1 - i]).toArray();
+	}
+
+	static String[] reverseArrayString(String[] arr, int n) {
+		return IntStream.range(0, n).mapToObj(i -> arr[n - 1 - i]).toArray(String[]::new);
+	}
+
+	static String reverseArrayStringMax(String[] arr, int n) {
+		return Arrays.stream(arr).reduce((s1, s2) -> s1.length() > s2.length() ? s1 : s2).orElse(null);
+	}
+
+	static boolean anaragamcheck() {
+		String s1 = "abcd ";
+		String s2 = "dacb ";
+		char[] ca1 = s1.toCharArray();
+		char[] ca2 = s2.toCharArray();
+		Arrays.sort(ca1);
+		Arrays.sort(ca2);
+		return Arrays.equals(ca1, ca2);
+	}
+
+	static boolean balancedStringcheck() {
+		String s1 = "([{}])";
+		Stack<Character> stack = new Stack<Character>();
+		for (char ch : s1.toCharArray()) {
+			if (ch == '(' || ch == '[' || ch == '{') {
+				stack.push(ch);
+			} else if (ch == ')' || ch == ']' || ch == '}') {
+				if (stack.isEmpty()) {
+					return false;
+				}
+				char top = stack.pop();
+				if ((ch == '(' && top != ')') || (ch == '[' && top != ']') || (ch == '{' && top != '}')) {
+					return false;
+				}
+
+			}
+		}
+		return stack.isEmpty();
+	}
+
+	static String[] printEvenwords() {
+		String arrString[] = { "srinup", "sbi", "bank", "indian" };
+		return Arrays.stream(arrString).filter(o -> o.length() % 2 == 0).toArray(String[]::new);
+	}
+
+	static int sumOfTwoStrings() {
+		String s1 = "string";
+		String s2 = "array";
+		return s1.length() + s2.length();
+	}
+
+	static String reverseWords() {
+		String stringobj = "state bank of india and associates";
+		System.out.println("counting words=====" + stringobj.split("\\s+").length);
+		String reversed = Arrays.stream(stringobj.split("\\s+")).map(word -> new StringBuilder(word).reverse())
+				.collect(Collectors.joining(" "));
+		return reversed;
+	}
+
+	static boolean equalcheck() {
+		String s1 = "hello";
+		String s2 = "hello";
+		if (s1.length() != s2.length()) {
+			return false;
+		}
+		for (int i = 0; i < s1.length() - 1; i++) {
+			if (s1.charAt(i) != s2.charAt(i)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static char firstNonRepeatingChar() {
+		String s = "srinu";
+		char[] charArr = s.toCharArray();
+		HashMap<Character, Integer> map = new HashMap<Character, Integer>();
+		for (Character ch : charArr) {
+			if (map.containsKey(ch)) {
+				map.put(ch, map.get(ch) + 1);
+			} else {
+				map.put(ch, 1);
+			}
+		}
+		for (int i = 0; i < s.length(); i++) {
+			if (map.get(s.charAt(i)) == 1)
+				return s.charAt(i);
+		}
+		return 'N';
+
+	}
+
+	static void characterCountInEachWord() {
+		String s = "state bank of india";
+		String[] words = s.split("\\s+");
+		for (String word : words) {
+			System.out.println("The word " + word + " length is: " + word.length());
+		}
+	}
+
+	static boolean panagramCheck() {
+		String panagramTest = "Mr. Jock, TV quiz Ph. D., bags few lynx.” is considered a “perfect pangram";
+		String lowmerpanagramTest = panagramTest.toLowerCase();
+		return IntStream.range('a', 'z' + 1).mapToObj(c -> (char) c)
+				.allMatch(o -> lowmerpanagramTest.contains(o.toString()));
+	}
+
+	static boolean palendromecheck() {
+		String s1 = "madam";
+		int n = s1.length() - 1;
+//		for(int i=0;i<n/2;i++) {
+//			if(s1.charAt(i)!=s1.charAt(n-i)) {
+//				return false;
+//			}
+//		}
+		return IntStream.range(0, n / 2).allMatch(i -> s1.charAt(i) == s1.charAt(n - i));
+	}
+
+	static boolean numberPalendromecheck() {
+		int n = 1211;
+//		int original=n;
+//		int reversenum=0;
+//		while(n!=0) {
+//			int digit=n%10;
+//			reversenum=reversenum*10+digit;
+//			n=n/10;
+//		}
+//		if(original==reversenum)
+//			return true;
+//		else
+//			return false;
+		String stringNum = String.valueOf(n);
+		return IntStream.range(0, stringNum.length() / 2)
+				.allMatch(i -> stringNum.charAt(i) == stringNum.charAt(stringNum.length() - 1 - i));
+	}
+
+	static void printAllSubstrings() {
+		String input = "abcd";
+		for (int i = 0; i < input.length(); i++) {
+			for (int j = i + 1; j <= input.length(); j++) {
+				System.out.println(input.substring(i, j));
+			}
+		}
+	}
+
+	static boolean roationCheck() {
+		String s1 = "rotaion";
+		String s2 = "noiator";
+		String concatStr = s1 + s2;
+		return concatStr.contains(s2);
+	}
+
+	static int lengthOfLongestSubstring() {
+		String s = "abbcda";
+		Set<Character> uniqueChar = new HashSet<Character>();
+		int maxLength = 0;
+		int i = 0;
+		int j = 0;
+		while (j < s.length()) {
+			if (uniqueChar.add(s.charAt(j))) {
+				maxLength = Math.max(maxLength, uniqueChar.size());
+				j++;
+			} else {
+				uniqueChar.remove(s.charAt(i));
+				i++;
+			}
+		}
+		return maxLength;
+
+	}
+
+	static String removeDuplicateChars() {
+		String s = "hello";
+		StringBuilder sb = new StringBuilder();
+		Set<Character> uniquechar = new HashSet<Character>();
+		for (char c : s.toCharArray()) {
+			if (uniquechar.add(c)) {
+				sb.append(c);
+			}
+		}
+		return sb.toString();
+
+	}
+
+	static String removeCharsFrom2ndString() {
+		String s1 = "computer";
+		String s2 = "caomut";
+		String result = s1.replaceAll("[" + s2 + "]", "");
+		return result;
+	}
+
+	static void permutation(String prefix, String str) {
+		int n = str.length();
+		if (n == 0)
+			System.out.println(prefix);
+		else {
+			for (int i = 0; i < n; i++)
+				permutation(prefix + str.charAt(i), str.substring(0, i) + str.substring(i + 1, n));
+		}
+	}
+	
+}
