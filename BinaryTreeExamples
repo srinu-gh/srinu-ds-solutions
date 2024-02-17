@@ -1,0 +1,176 @@
+package sbi.sf.comport;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+
+public class LevelOrderTraversal {
+
+//	For each node, first, the node is visited and then it’s child nodes are put in a FIFO queue. 
+//	Then again the first node is popped out and then it’s child nodes are put in a FIFO queue 
+//	and repeat until queue becomes empty.
+	
+	Node root;
+
+	public LevelOrderTraversal() {
+		this.root = null;
+	}
+
+	public List<List<Integer>> levelOrderTraversal(Node root) {
+		List<List<Integer>> res = new ArrayList<>();
+		if (root == null)
+			return null;
+		Queue<Node> queue = new LinkedList<>();
+		queue.offer(root);
+		while (!queue.isEmpty()) {
+			int levelSize = queue.size();
+			List<Integer> currentLevel = new ArrayList<>(levelSize);
+			for (int i = 0; i < levelSize; i++) {
+				Node currentNode = queue.poll();
+				currentLevel.add(currentNode.key);
+				if (currentNode.left != null) {
+					queue.offer(currentNode.left);
+				}
+				if (currentNode.right != null) {
+					queue.offer(currentNode.right);
+				}
+				
+			}
+			res.add(currentLevel);
+		}
+		return res;
+
+	}
+	
+	public List<List<Integer>> zigZagLevelOrderTraversal(Node root) {
+		List<List<Integer>> res = new ArrayList<>();
+		if (root == null)
+			return null;
+		boolean leftToRight=true;
+		Queue<Node> queue = new LinkedList<>();
+		queue.offer(root);
+		while (!queue.isEmpty()) {
+			int levelSize = queue.size();
+			List<Integer> currentLevel = new ArrayList<>(levelSize);
+			for (int i = 0; i < levelSize; i++) {
+				Node currentNode = queue.poll();
+				currentLevel.add(currentNode.key);
+				if (currentNode.left != null) {
+					queue.offer(currentNode.left);
+				}
+				if (currentNode.right != null) {
+					queue.offer(currentNode.right);
+				}
+				
+			}
+			if(!leftToRight) {
+				Collections.reverse(currentLevel);
+			}
+			res.add(currentLevel);
+			
+			leftToRight=!leftToRight;
+			
+		}
+		return res;
+
+	}
+
+	
+//	In the Diagonal Traversal of a Tree, all the nodes in a single diagonal will be printed one by one
+	
+	public List<List<Integer>> diagnoalOrderTraversal(Node root) {
+		Map<Integer,List<Integer>> diagnoalMap=new HashMap<>();
+		diagnoalTraversalUtil(root,0,diagnoalMap);
+		return new ArrayList<>(diagnoalMap.values());
+
+	}
+	
+	private void diagnoalTraversalUtil(Node root, int diagonalNumber, Map<Integer, List<Integer>> diagnoalMap) {
+		if(root==null)
+			return;
+		List<Integer> list = diagnoalMap.getOrDefault(diagonalNumber, new ArrayList<>());
+		list.add(root.key);
+		diagnoalMap.put(diagonalNumber, list);
+		if(root.left!=null)
+			diagnoalTraversalUtil(root.left,diagonalNumber+1,diagnoalMap);
+		if(root.right!=null)
+			diagnoalTraversalUtil(root.right,diagonalNumber,diagnoalMap);
+		
+	}
+
+	
+//	The Boundary Traversal of a Tree includes:
+//	left boundary (nodes on left excluding leaf nodes)
+//	leaves (consist of only the leaf nodes)
+//	right boundary (nodes on right excluding leaf nodes)
+		
+	public List<Integer> boundaryTraversal(Node root) {
+		if(root==null)
+			return null;
+		List<Integer> result=new ArrayList<>();
+		result.add(root.key);
+		leftBoundaryTraversal(root.left,result);
+		leavesTraversal(root,result);
+		rightBoundaryTraversal(root.right,result);
+		
+		return result;
+		
+	}
+	private void rightBoundaryTraversal(Node root, List<Integer> result) {
+		if(root==null ||(root.left==null && root.right==null))
+			return;
+		result.add(root.key);
+		if(root.right!=null)
+			rightBoundaryTraversal(root.right,result);
+		if(root.left!=null)
+			rightBoundaryTraversal(root.left,result);
+	}
+
+	private void leavesTraversal(Node root, List<Integer> result) {
+		if(root==null)
+			return;
+		if(root.left==null && root.right==null)
+			result.add(root.key);
+		leavesTraversal(root.left,result);
+		leavesTraversal(root.right,result);
+		
+	}
+
+	private void leftBoundaryTraversal(Node root, List<Integer> result) {
+		if(root==null ||(root.left==null && root.right==null))
+			return;
+		result.add(root.key);
+		if(root.left!=null)
+			leftBoundaryTraversal(root.left,result);
+		if(root.right!=null)
+			leftBoundaryTraversal(root.right,result);
+		
+		
+	}
+
+	public static void main(String[] args) {
+		LevelOrderTraversal tree = new LevelOrderTraversal();
+		tree.root = new Node(1);
+		tree.root.left = new Node(2);
+		tree.root.right = new Node(3);
+		tree.root.left.left = new Node(4);
+		tree.root.left.right = new Node(5);
+
+		System.out.println("level order traversal of binary tree is ");
+		System.out.println(tree.levelOrderTraversal(tree.root));
+		
+		System.out.println("zig zag level order traversal of binary tree is ");
+		System.out.println(tree.zigZagLevelOrderTraversal(tree.root));
+		
+		System.out.println("diagnoal order traversal of binary tree is ");
+		System.out.println(tree.diagnoalOrderTraversal(tree.root));
+		
+		System.out.println("boundary level traversal of binary tree is ");
+		System.out.println(tree.boundaryTraversal(tree.root));
+
+	}
+}
