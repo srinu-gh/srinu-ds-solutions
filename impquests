@@ -1,0 +1,115 @@
+package sbi.sf.comport;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
+
+public class Test {
+
+	
+	static int[] findBestDays() {
+	
+		int[] prices= {7,1,5,3,6,4};
+		int maxProfitDay=0;
+		int sellDt=0;
+		int buyDt=0;
+		int minBuyDt=0;
+		for(int i=0;i<prices.length;i++) {
+			if(prices[i]<prices[minBuyDt]) {
+				minBuyDt=i;
+			}
+			int profit=prices[i]-prices[minBuyDt];
+			if(profit>maxProfitDay) {
+				maxProfitDay=profit;
+				sellDt=i;
+				buyDt=minBuyDt;
+			}
+		}
+		
+		System.out.println("best buy date==="+buyDt+", best sell date=="+sellDt);
+		return new int[] {buyDt,sellDt};
+	}
+	public static void main(String[] args) {
+		ExecutorService even=Executors.newSingleThreadExecutor(r->{
+			Thread t1=new Thread(r);
+			t1.setName("Even thread");
+			return t1;
+		});
+		ExecutorService odd=Executors.newSingleThreadExecutor(r->{
+			Thread t1=new Thread(r);
+			t1.setName("Odd thread");
+			return t1;
+		});
+		
+		IntStream.range(0, 11).forEach(num->{
+			CompletableFuture<Integer> supplyAsync=CompletableFuture.completedFuture(num).thenApplyAsync(n->{
+				if(n%2==0) {
+					System.out.println(n + " " + Thread.currentThread().getName());
+				}
+				return num;
+			},even);
+			supplyAsync.join();
+			
+			CompletableFuture<Integer> supplyAsync1=CompletableFuture.completedFuture(num).thenApplyAsync(n->{
+				if(n%2==1) {
+					System.out.println(n + " " + Thread.currentThread().getName());
+				}
+				return num;
+			},odd);
+			
+			supplyAsync1.join();
+		});
+		even.shutdown();
+		odd.shutdown();
+	}
+	
+	
+	
+//	static int n = 10;
+//	static int counter = 1;
+//
+//	public static void main(String[] args) throws Exception {
+//		Test obj=new Test();
+//		Thread t1=new Thread(()->obj.printEven());
+//		Thread t2=new Thread(()->obj.printOdd());
+//		t1.start();
+//		t2.start();
+//	}
+//
+//	public void printEven() {
+//		synchronized (this) {
+//			while (counter < n) {
+//				if (counter % 2 == 0) {
+//					try {
+//						wait();
+//					} catch (Exception e) {
+//						e.printStackTrace();
+//					}
+//				}
+//				System.out.println(counter + " Thread Name: " + Thread.currentThread().getName());
+//				counter++;
+//				notify();
+//			}
+//		}
+//
+//	}
+//
+//	public void printOdd() {
+//		synchronized (this) {
+//			while (counter < n) {
+//				if (counter % 2 == 1) {
+//					try {
+//						wait();
+//					} catch (Exception e) {
+//						e.printStackTrace();
+//					}
+//				}
+//				System.out.println(counter + " Thread Name: " + Thread.currentThread().getName());
+//				counter++;
+//				notify();
+//			}
+//		}
+//
+//	}
+}
