@@ -1,0 +1,98 @@
+package com.explore;
+
+import java.util.Arrays;
+import java.util.DoubleSummaryStatistics;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class EPAMInrwCoding {
+
+	private static void findMaxProfitDays(int[] prices) {
+		int buyDay = 0;
+		int sellDay = 0;
+		int maxProfit = 0;
+		int minPriceDay = 0;
+		for (int i = 0; i < prices.length; i++) {
+			if (prices[i] < prices[minPriceDay]) {
+				minPriceDay = i;
+			}
+
+			int profit = prices[i] - prices[minPriceDay];
+			if (profit > maxProfit) {
+				maxProfit = profit;
+				sellDay = i;
+				buyDay = minPriceDay;
+			}
+
+		}
+
+		System.out.println("best buy day==" + buyDay);
+		System.out.println("best sell day==" + sellDay);
+		System.out.println("max profit==" + maxProfit);
+	}
+
+	public static void main(String[] args) {
+
+//		int price[] = { 20,10,20,30,40,50,80,10,90 };
+//		findMaxProfitDays(price);
+
+		List<Employee> employee = Arrays.asList(
+                new Employee("Alice", 28, 60000, "HR"),
+                new Employee("Bob", 35, 75000, "Engineering"),
+                new Employee("Charlie", 32, 90000, "Engineering"),
+                new Employee("David", 40, 80000, "HR"),
+                new Employee("Eva", 28, 70000, "Finance"),
+                new Employee("Frank", 45, 95000, "Finance")
+        );
+//		
+//		Map<String, List<Employee>> map=employee.stream()
+//				.sorted(Comparator.comparing(Employee::getAge).reversed())
+//				.sorted(Comparator.comparing(Employee::getSalary).reversed())
+//				.collect(Collectors.groupingBy(Employee::getDepartment));
+//		System.out.println(map.values().stream().flatMap(List::stream).map(Employee::getSalary).min(Comparator.comparing(obj->obj)).get());
+//		map.values().stream().flatMap(List::stream).map(Employee::getSalary).max(Comparator.comparing(obj->obj)).get();
+//		
+//		System.out.println(map.values().stream().flatMap(List::stream).mapToDouble(Employee::getSalary).average().getAsDouble());
+//		
+//		
+//		map.forEach((grp,obj)->{
+//			System.out.println(grp);
+//			obj.forEach(System.out::println);
+//		});
+
+		List<List<String>> namesNested = Arrays.asList(Arrays.asList("Jeff", "Bezos", "sdafdsfds"),
+				Arrays.asList("Bill", "Gates"), Arrays.asList("Mark", "Zuckerberg"));
+
+		System.out.println(namesNested);
+
+		List<String> namesFlatStream = namesNested.stream().flatMap(List::stream).collect(Collectors.toList());
+
+		System.out.println(namesFlatStream);
+
+		System.out.println(namesFlatStream.stream().collect(Collectors.joining(",")));
+		
+		DoubleSummaryStatistics stats = employee.stream().collect(Collectors.summarizingDouble(Employee::getSalary));
+		System.out.println(stats);
+		
+		List<Integer> intList = Arrays.asList(2, 4, 5, 6, 8);
+		
+		System.out.println(intList.stream().collect(Collectors.partitioningBy(i->i%2==0)));
+		
+		Double percentage = 10.0;
+	    Double salIncrOverhead = employee.stream().collect(Collectors.reducing(0.0,obj->obj.getSalary()*percentage / 100, (s1, s2) -> s1 + s2));
+	    
+	    System.out.println(salIncrOverhead);
+
+//		List<Integer> intList = Arrays.asList(2, 4, 5, 7, 8);
+//
+//		boolean allEven = intList.stream().allMatch(i -> i % 2 == 0);
+//		boolean oneEven = intList.stream().anyMatch(i -> i % 2 == 0);
+//		boolean noneMultipleOfThree = intList.stream().noneMatch(i -> i % 3 == 0);
+//		
+//		System.out.println(allEven);
+//		System.out.println(oneEven);
+//		System.out.println(noneMultipleOfThree);
+
+	}
+
+}
