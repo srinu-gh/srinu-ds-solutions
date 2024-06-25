@@ -1,0 +1,541 @@
+package sbi.sf.comport.eisClient.helpers;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.lang.System.Logger;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.spec.MGF1ParameterSpec;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Enumeration;
+import java.util.UUID;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.OAEPParameterSpec;
+import javax.crypto.spec.PSource;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.apache.logging.log4j.LogManager;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import sbi.sf.comport.eisClient.exception.EisException;
+import sbi.sf.comport.eisClient.models.CertificateDetails;
+
+public final class CryptoUtil {
+
+	private static final String AES_ALGO = "AES";
+	private static final String AES_CIPHER = "AES/CBC/PKCS5Padding";
+	private static final String AES_GCM_PAD = "AES/GCM/Nopadding";
+	private static final String ENCODING = "UTF-8";
+	private static final String RSA_ALGO = "RSA/ECB/OAEPPadding";
+	private static final String SIGNATURE_ALGO = "SHA256withRSA";
+	private static final String CIPHER_INSTANCE = "RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING";
+	private static final String OAEP_DIGEST = "SHA-256";
+	private static final String OAEP_MASK = "MGF1";
+	private static ComplianceLogFactory logger = ComplianceLogFactory.getLogInstance();
+	/**
+	 * Generates the initial 128 bit random salt vector for aes encryption
+	 * 
+	 * @return {@link String}
+	 */
+	public static String getRandomSalt() {
+		return UUID.randomUUID().toString().replace("-", "");
+	}
+
+	public static SecretKey generateAESkey() {
+		// --- generate a new AES secret key ---
+		KeyGenerator aesKeyGenerator;
+		try {
+			aesKeyGenerator = KeyGenerator.getInstance(AES_ALGO);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException(
+					"Runtime doesn't have support for AES key generator (mandatory algorithm for runtimes)", e);
+		}
+		aesKeyGenerator.init(256);
+		SecretKey aesKey = aesKeyGenerator.generateKey();
+		return aesKey;
+	}
+
+	/**
+	 * The function is used to sign the data which needs to be sent to EIS
+	 * 
+	 * @param plainText  text to be signed
+	 * @param privateKey Private key of the application corrensponding to the public
+	 *                   key sent to EIS for whitelisting
+	 * @return Signed {@link String}
+	 */
+	public static String sign(String plainText, PrivateKey privateKey) {
+		try {
+			Signature privateSignature;
+			privateSignature = Signature.getInstance(SIGNATURE_ALGO);
+			privateSignature.initSign(privateKey);
+			privateSignature.update(plainText.getBytes(ENCODING));
+			byte[] signature = privateSignature.sign();
+			return java.util.Base64.getEncoder().encodeToString(signature);
+		} catch (NoSuchAlgorithmException | UnsupportedEncodingException | InvalidKeyException | SignatureException e) {
+            logger.error("invalid key exp: "+e.getMessage());
+			throw new EisException(e);
+		}
+	}
+
+	/**
+	 * Convert any object to json through {@link ObjectMapper}
+	 * 
+	 * @param plainReq
+	 * @return {@link String}
+	 */
+	public static String getPlainJson(Object plainReq) {
+		ObjectMapper Obj = new ObjectMapper();
+		try {
+			if (plainReq != null) {
+				return Obj.writeValueAsString(plainReq);
+			}
+		} catch (JsonProcessingException e) {
+			logger.error("getPlainreqjson error while parsing to json {} cause is {} " + e.getMessage()
+					+ e.fillInStackTrace());
+			throw new EisException(e);
+		}
+		return null;
+	}
+
+	/**
+	 * It encrypts the string with AES algorithm and returns the encrypted string
+	 * 
+	 * @param plainText data to be encrypted
+	 * @param secretKey salt vector
+	 * @return {@link String} Encrypted string
+	 */
+	public static String encryptPayload(String plainText, String secretKey) {
+		String encryptedText = null;
+		IvParameterSpec iv;
+		SecretKey secretKeyObject;
+		try {
+			byte[] plainTextByte = plainText.getBytes();
+			byte[] keybyte = secretKey.getBytes(ENCODING);
+			byte[] ivKey = Arrays.copyOf(keybyte, 16);
+			iv = new IvParameterSpec(ivKey);
+			secretKeyObject = new SecretKeySpec(keybyte, AES_ALGO);
+			Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+			cipher.init(Cipher.ENCRYPT_MODE, secretKeyObject, iv);
+			byte[] encryptedByte = cipher.doFinal(plainTextByte);
+			encryptedText = Base64.getEncoder().encodeToString(encryptedByte);
+
+		} catch (UnsupportedEncodingException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+				| InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
+			// throw new SbiCryptoException(e.getMessage());
+			logger.error("{}" + e.getMessage());
+			throw new EisException(e);
+		}
+		return encryptedText;
+	}
+
+	public static String encryptRawJSON(SecretKey aesKey, PublicKey edmsServerPublicKey, String rawJSON)
+			throws InvalidKeyException, NullPointerException, UnsupportedEncodingException {
+		// --- create the RSA OAEP cipher ---
+		Cipher encryptionCipher;
+		OAEPParameterSpec oaepParameterSpec;
+		try {
+			// SHA-1 is the default and not vulnerable in this setting
+			// use OAEPParameterSpec to configure more than just the hash
+			encryptionCipher = Cipher.getInstance(CIPHER_INSTANCE);
+			oaepParameterSpec = new OAEPParameterSpec(OAEP_DIGEST, OAEP_MASK, MGF1ParameterSpec.SHA256,
+					PSource.PSpecified.DEFAULT);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("Runtime doesn't have support for RSA cipher (mandatory algorithm for runtimes)", e);
+		} catch (NoSuchPaddingException e) {
+			throw new EisException(
+					"Runtime doesn't have support for OAEP padding (present in the standard Java runtime since XX)", e);
+		}
+		try {
+			encryptionCipher.init(Cipher.WRAP_MODE, edmsServerPublicKey, oaepParameterSpec);
+		} catch (InvalidAlgorithmParameterException e1) {
+			e1.getLocalizedMessage();
+			logger.error("Invalid algorithm parameters exception: "+e1.getMessage());
+			throw new EisException(e1);
+
+		}
+		// --- wrap the rawJSON in a buffer
+		// will throw NullPointerException if rawJSON is null
+		ByteBuffer rawJSONBuffer = ByteBuffer.wrap(rawJSON.getBytes(ENCODING));
+		// --- wrap the new AES secret key ---
+		byte[] wrappedKey;
+		try {
+			wrappedKey = encryptionCipher.wrap(aesKey);
+		} catch (IllegalBlockSizeException e) {
+			throw new EisException("AES key should always fit OAEP with normal sized RSA key", e);
+		}
+		// --- setup the AES GCM cipher mode ---
+		Cipher aesGCM;
+		try {
+			aesGCM = Cipher.getInstance(AES_GCM_PAD);
+			// we can get away with a zero nonce since the key is randomly generated
+			// 128 bits is the recommended (maximum) value for the tag size
+			// 12 bytes (96 bits) is the default nonce size for GCM mode encryption
+			GCMParameterSpec staticParameterSpec = new GCMParameterSpec(128, new byte[12]);
+			aesGCM.init(Cipher.ENCRYPT_MODE, aesKey, staticParameterSpec);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("Runtime doesn't have support for AES cipher (mandatory algorithm for runtimes)", e);
+		} catch (NoSuchPaddingException e) {
+			throw new EisException(
+					"Runtime doesn't have support for GCM(present in the standard Java runtime since XX)", e);
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new EisException("IvParameterSpec not accepted by this implementation of GCM", e);
+		}
+		// --- create a buffer of the right size for our own protocol ---
+		ByteBuffer ciphertextBuffer = ByteBuffer.allocate(Short.BYTES + encryptionCipher.getOutputSize(128 / Byte.SIZE)
+				+ aesGCM.getOutputSize(rawJSON.getBytes(ENCODING).length));
+		// - element 1: make sure that we know the size of the wrapped key
+		ciphertextBuffer.putShort((short) wrappedKey.length);
+		// - element 2: put in the wrapped key
+		ciphertextBuffer.put(wrappedKey);
+		// - element 3: GCM encrypt into buffer
+		try {
+			aesGCM.doFinal(rawJSONBuffer, ciphertextBuffer);
+		} catch (Exception e) {
+			throw new EisException("Cryptographic exception, AES/GCM encryption should not fail here", e);
+		}
+		return Base64.getEncoder().encodeToString(ciphertextBuffer.array());
+	}
+
+	public static String decryptResponse(String encryptedResponse, PrivateKey privateKey)
+			throws InvalidKeyException, NullPointerException, UnsupportedEncodingException {
+		// --- create the RSA OAEP cipher ---
+		Cipher decryptionCipher;
+		OAEPParameterSpec oaepParameterSpec;
+		try {
+			// SHA-1 is the default and not vulnerable in this setting
+			// use OAEPParameterSpec to configure more than just the hash
+			decryptionCipher = Cipher.getInstance(CIPHER_INSTANCE);
+			oaepParameterSpec = new OAEPParameterSpec(OAEP_DIGEST, OAEP_MASK, MGF1ParameterSpec.SHA256,
+					PSource.PSpecified.DEFAULT);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("Runtime doesn't have support for RSA cipher (mandatory algorithm for runtimes)", e);
+		} catch (NoSuchPaddingException e) {
+			throw new EisException(
+					"Runtime doesn't have support for OAEP padding (present in the standard Java runtime sinze XX)", e);
+		}
+		try {
+			decryptionCipher.init(Cipher.UNWRAP_MODE, privateKey, oaepParameterSpec);
+		} catch (InvalidAlgorithmParameterException e1) {
+			logger.error("Inside catch block of InvalidAlgorithmParameterException");
+			e1.getLocalizedMessage();
+			logger.error("Invalid algorithm parameters exception: "+e1.getMessage());
+			throw new EisException(e1);
+		}
+		byte[] encryptedBytes = Base64.getDecoder().decode(encryptedResponse.getBytes(ENCODING));
+		// --- wrap the ciphertext in a buffer
+		// will throw NullPointerException if ciphertext is null
+		ByteBuffer ciphertextBuffer = ByteBuffer.wrap(encryptedBytes);
+		// sanity check #1
+		if (ciphertextBuffer.remaining() < 2) {
+			throw new IllegalArgumentException("Invalid ciphertext");
+		}
+		// - element 1: the length of the encapsulated key
+		int wrappedKeySize = ciphertextBuffer.getShort() & 0xFFFF;
+		// sanity check #2
+		if (ciphertextBuffer.remaining() < wrappedKeySize + 256 / Byte.SIZE) {
+			throw new IllegalArgumentException("Invalid ciphertext");
+		}
+		// --- unwrap the AES secret key ---
+		byte[] wrappedKey = new byte[wrappedKeySize];
+		// - element 2: the encapsulated key
+		ciphertextBuffer.get(wrappedKey);
+		SecretKey aesKey;
+		try {
+			aesKey = (SecretKey) decryptionCipher.unwrap(wrappedKey, AES_ALGO, Cipher.SECRET_KEY);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("Runtime doesn't have support for AES cipher (mandatory algorithm for runtimes)", e);
+		} catch (InvalidKeyException e) {
+			throw new EisException("Invalid ciphertext");
+		}
+		// --- setup the AES GCM cipher mode ---
+		Cipher aesGCM;
+		try {
+			aesGCM = Cipher.getInstance(AES_GCM_PAD);
+			// we can get away with a zero nonce since the key is randomly
+			// generated
+			// 128 bits is the recommended (maximum) value for the tag size
+			// 12 bytes (96 bits) is the default nonce size for GCM mode
+			// encryption
+			GCMParameterSpec staticParameterSpec = new GCMParameterSpec(128, new byte[12]);
+			aesGCM.init(Cipher.DECRYPT_MODE, aesKey, staticParameterSpec);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("Runtime doesn't have support for AES cipher (mandatory algorithm for runtimes)", e);
+		} catch (NoSuchPaddingException e) {
+			throw new EisException(
+					"Runtime doesn't have support for GCM (present in the standard Java runtime sinze XX)", e);
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new EisException("IvParameterSpec not accepted by this implementation of GCM", e);
+		}
+		// --- create a buffer of the right size for our own protocol ---
+		ByteBuffer rawJSONBuffer = ByteBuffer.allocate(aesGCM.getOutputSize(ciphertextBuffer.remaining()));
+		// - element 3: GCM ciphertext
+		try {
+			aesGCM.doFinal(ciphertextBuffer, rawJSONBuffer);
+		} catch (Exception e) {
+			throw new EisException("Invalid ciphertext");
+		}
+		return new String(rawJSONBuffer.array());
+	}
+
+	public static String decReceiverAccessToken(PrivateKey privateKey, String encReceiverAccessToken)
+			throws InvalidKeyException, UnsupportedEncodingException, IllegalBlockSizeException, BadPaddingException {
+		// --- create the RSA OAEP cipher ---
+		Cipher decryptionCipher;
+		OAEPParameterSpec oaepParameterSpec;
+		try {
+			// SHA-1 is the default and not vulnerable in this setting
+			// use OAEPParameterSpec to configure more than just the hash
+			decryptionCipher = Cipher.getInstance(CIPHER_INSTANCE);
+			oaepParameterSpec = new OAEPParameterSpec(OAEP_DIGEST, OAEP_MASK, MGF1ParameterSpec.SHA256,
+					PSource.PSpecified.DEFAULT);
+		} catch (NoSuchAlgorithmException e1) {
+			throw new EisException("Runtime doesn't have support for RSA cipher (mandatory algorithm for runtimes)",
+					e1);
+		} catch (NoSuchPaddingException e2) {
+			throw new EisException(
+					"Runtime doesn't have support for OAEP padding (present in the standard Java runtime since XX)",
+					e2);
+		}
+		try {
+			decryptionCipher.init(2, privateKey, oaepParameterSpec);
+		} catch (InvalidAlgorithmParameterException e) {
+			logger.error("Inside catch block of InvalidAlgorithmParameterException");
+			e.getLocalizedMessage();
+			logger.error("Invalid algorithm parameters exception: "+e.getMessage());
+			throw new EisException(e);
+		}
+		byte[] tokenCipherTextBytes = Base64.getDecoder().decode(encReceiverAccessToken.getBytes(ENCODING));
+		byte[] decReceiverAccessTokenBytes = decryptionCipher.doFinal(tokenCipherTextBytes);
+		return new String(decReceiverAccessTokenBytes);
+	}
+
+	public static String decryptPayload(String encryptedText, String secretKey) {
+
+		String decryptedText = null;
+		IvParameterSpec iv;
+		try {
+			byte[] encryptedTextByte = Base64.getDecoder().decode(encryptedText);
+			byte[] keybyte = secretKey.getBytes(ENCODING);
+			byte[] ivKey = Arrays.copyOf(keybyte, 16);
+			iv = new IvParameterSpec(ivKey);
+			SecretKey secretKeyObject = new SecretKeySpec(keybyte, AES_ALGO);
+
+			Cipher cipher = Cipher.getInstance(AES_CIPHER);
+			cipher.init(Cipher.DECRYPT_MODE, secretKeyObject, iv);
+			byte[] decryptedByte = cipher.doFinal(encryptedTextByte);
+			decryptedText = new String(decryptedByte);
+
+		} catch (IOException | NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException
+				| InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
+			// throw new SbiCryptoException(e.getMessage());
+			logger.error("{}" + e.getMessage());
+			throw new EisException(e);
+		}
+		return decryptedText;
+	}
+
+	/**
+	 * Encrypts the final message using EIS public key so that they can decrypt the
+	 * same using their private key
+	 * 
+	 * @param msg
+	 * @param publicKey EIS public key
+	 * @return Encrypted {@link String}
+	 */
+	public static String encryptAccessToken(String msg, PublicKey publicKey) {
+		try {
+			Cipher cipher = Cipher.getInstance(RSA_ALGO);
+			cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+			return Base64.getEncoder().encodeToString(cipher.doFinal(msg.getBytes(ENCODING)));
+		} catch (InvalidKeyException e) {
+			throw new EisException("InvalidKeyException", e);
+		} catch (IllegalBlockSizeException e) {
+			throw new EisException("IllegalBlockSizeException", e);
+		} catch (BadPaddingException e) {
+			throw new EisException("BadPaddingException", e);
+		} catch (UnsupportedEncodingException e) {
+			throw new EisException("UnsupportedEncodingException", e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new EisException("NoSuchAlgorithmException", e);
+		} catch (NoSuchPaddingException e) {
+			throw new EisException("NoSuchPaddingException", e);
+		}
+	}
+
+	public static String generateSenderTokenHash(String receiverAccessToken)
+			throws NoSuchAlgorithmException, UnsupportedEncodingException {
+
+		MessageDigest messageDigest = MessageDigest.getInstance(OAEP_DIGEST);
+		byte[] encodedSenderTokenHash = messageDigest.digest(receiverAccessToken.getBytes(ENCODING));
+
+		String senderTokenHash = bytesToHex(encodedSenderTokenHash);
+
+		return senderTokenHash;
+
+	}
+
+	public static boolean verifyReceiverTokenHash(PublicKey edmsServerPublicKey, String signedReceiverTokenHash,
+			String senderTokenHash)
+			throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, UnsupportedEncodingException {
+
+		boolean hashMatched = false;
+
+		Signature publicSignature = Signature.getInstance(SIGNATURE_ALGO);
+
+		publicSignature.initVerify(edmsServerPublicKey);
+
+		publicSignature.update(senderTokenHash.getBytes(ENCODING));
+
+		byte[] signatureBytes = Base64.getDecoder().decode(signedReceiverTokenHash);
+
+		hashMatched = publicSignature.verify(signatureBytes);
+
+		return hashMatched;
+
+	}
+
+	public static String signSenderTokenHash(PrivateKey privateKey, String senderTokenHash)
+			throws UnsupportedEncodingException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+
+		Signature privateSignature = Signature.getInstance(SIGNATURE_ALGO);
+
+		privateSignature.initSign(privateKey);
+
+		privateSignature.update(senderTokenHash.getBytes(ENCODING));
+
+		byte[] signature = privateSignature.sign();
+
+		return Base64.getEncoder().encodeToString(signature);
+
+	}
+
+	private static String bytesToHex(byte[] encodedSenderTokenHash) {
+
+		StringBuffer hexString = new StringBuffer();
+
+		for (int i = 0; i < encodedSenderTokenHash.length; i++) {
+
+			String hex = Integer.toHexString(0xff & encodedSenderTokenHash[i]);
+
+			if (hex.length() == 1)
+				hexString.append('0');
+			hexString.append(hex);
+
+		}
+
+		return hexString.toString();
+
+	}
+
+	public static PrivateKey getPrivatekey(URL keyStorePath, String keyStoreToken) {
+		try {
+//            logger.error("key path: " + keyStorePath + "key password: " + keyStoreToken);
+
+//                CertificateDetails certificateDetails = CryptoUtil .getCertificateDetails(new FileInputStream(keyStorePath), keyStoreToken);
+			CertificateDetails certificateDetails = CryptoUtil.getCertificateDetails(keyStorePath.openStream(),
+					keyStoreToken);
+
+			return certificateDetails.getPrivateKey();
+		} catch (IOException e) {
+			logger.error("pk error");
+		}
+		return null;
+	}
+
+	public static CertificateDetails getCertificateDetails(InputStream jksfile, String jkstoken) {
+		CertificateDetails certDetails = null;
+
+		if (jksfile == null) {
+
+			return certDetails;
+		}
+
+		try {
+			boolean isAliasWithPrivateKey = false;
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			keyStore.load(jksfile, jkstoken.toCharArray());
+			// iterate over all aliases
+			Enumeration<String> es = keyStore.aliases();
+			String alias = "";
+			while (es.hasMoreElements()) {
+				alias = (String) es.nextElement();
+				// if alias refers to a private key break at that point
+				// as we want to use that certificate
+				if (isAliasWithPrivateKey = keyStore.isKeyEntry(alias)) {
+					break;
+				}
+			}
+			if (isAliasWithPrivateKey) {
+				KeyStore.PrivateKeyEntry pkEntry = (KeyStore.PrivateKeyEntry) keyStore.getEntry(alias,
+						new KeyStore.PasswordProtection(jkstoken.toCharArray()));
+				PrivateKey myPrivateKey = pkEntry.getPrivateKey();
+				// Load certificate chain
+				Certificate[] chain = keyStore.getCertificateChain(alias);
+
+				certDetails = new CertificateDetails();
+				certDetails.setPrivateKey(myPrivateKey);
+				certDetails.setX509Certificate((X509Certificate) chain[0]);
+
+			}
+
+		} catch (KeyStoreException e) {
+			logger.error("key store exception: "+e.getMessage());
+		} catch (NoSuchAlgorithmException e) {
+			logger.error("no such algo exception: "+e.getMessage());
+		} catch (CertificateException e) {
+			logger.error("certificate exception: "+e.getMessage());
+		} catch (FileNotFoundException e) {
+			logger.error("file not found exception: "+e.getMessage());
+		} catch (IOException e) {
+			logger.error("IO exception: "+e.getMessage());
+		} catch (UnrecoverableEntryException e) {
+			logger.error("unrecoverable entry exception: "+e.getMessage());
+		} finally {
+			if (jksfile != null) {
+				try {
+					jksfile.close();
+				} catch (IOException e) {
+					return certDetails;
+				}
+			}
+		}
+		return certDetails;
+	}
+
+	public static PublicKey getPublicKey(URL pubFilename) throws Exception {
+		CertificateFactory cf = CertificateFactory.getInstance("X.509");
+//            FileInputStream fis = new FileInputStream(pubFilename);
+		InputStream fis = pubFilename.openStream();
+		X509Certificate cert = (X509Certificate) cf.generateCertificate(fis);
+		PublicKey publicKey = cert.getPublicKey();
+		return publicKey;
+	}
+}
